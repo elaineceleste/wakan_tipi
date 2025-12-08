@@ -70,6 +70,8 @@ fm1
 summary(fm1)
 plot(fm1)
 
+fm2=aov(abundance ~ year, data = effort)
+
 boxplot(effort$abundance ~ effort$year , col=terrain.colors(4) )
 
 # Add data points
