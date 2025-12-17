@@ -9,15 +9,17 @@ library(viridis)
 library(bipartite)
 library(ggplot2)
 library(ellipsis)
+library(tidyr)
 
 
-####all bumble bee data 2022 to 2024
+####Data all bumble bee data 2022 to 2024 and survey effort
+#######################################
 bees=read.csv("atlas_wakan_tipi_observations.csv")
 
-####surveyeffort
-effort=read.csv("abundanceperevent.csv")
 
-###species matrix
+effort=read.csv("abundanceperevent.csv")
+##speciesmatrix
+#####################################
 matrix <- create.matrix(bees, tax.name = "vernacularName",
                               locality = "eventID",
                         time.col=NULL,
@@ -25,11 +27,12 @@ matrix <- create.matrix(bees, tax.name = "vernacularName",
                               abund.col = "individualCount",
                               abund = TRUE)
 
-##species accululation
+##species accumulation
+#########################################
 sp1=specaccum(matrix, method = "exact", permutations = 100,
               conditioned =TRUE, gamma = "jack1",  w = NULL)
 
-sppaccplott=plot(sp1, ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue",xlab="collection", ylab = "richness")
+sppaccplott=plot(sp1, ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue",xlab="Collection", ylab = "Bumble bee richness +/- 95% CI")
 
 #table by year
 
@@ -49,6 +52,7 @@ pt$renderPivot()
 
 
 #### relative abundance
+####################################################
 
 relabund=bees %>%
   tabyl(year, vernacularName) %>%
@@ -65,14 +69,17 @@ transprelabund=relabund[-1] %>% t() %>% as.data.frame() %>% setNames(relabund[,1
 
 
 ##bee abundance over time
+############################################
 fm1=lm(abundance ~ year, data = effort)
 fm1
 summary(fm1)
 plot(fm1)
 
-fm2=aov(abundance ~ year, data = effort)
+fm2=aov(sqrt(abundance) ~ year, data = effort)
+summary(fm2)
+plot(fm2)
 
-boxplot(effort$abundance ~ effort$year , col=terrain.colors(4) )
+boxplot(effort$abundance ~ effort$year,xlab="Year", ylab = "Average abundance per collection" )
 
 # Add data points
 mylevels <- levels(effort$abundance)
@@ -99,6 +106,44 @@ for(i in 1:length(mylevels)){
 
 
 ##interaction plots....use bipartite package
+  #########################################################
+
+###getting data into matrix of plant, species, abudnance
+  
+beenetwork=bees
+networktable=   beenetwork%>%
+      group_by(associatedTaxa, specificEpithet) %>%
+    summarize(abundance = sum(individualCount))  
+
+##going from long to wide
+plotnetwork=networktable %>% pivot_wider(., names_from = specificEpithet, values_from = abundance) %>% replace(is.na(.),0)
+#remove obs with no flowers
+plotnetwork=subset(plotnetwork, associatedTaxa !="")
+###making plot 
+plotweb(plotnetwork)
+
+##wont make plot with column of plant labels, forcing to integer, removing column
+plotnetworkinteger <- as.matrix(sapply(plotnetwork, as.integer))
+
+###making plot ...works but doesn't have plant names
+plotweb(plotnetworkinteger)
+
+
+
+
+        
+####extra.....row names for plants
+row.names(plotnetworkinteger)<-c("Agastache foeniculum","Asclepias incarnata",
+                                 "Asclepias verticillata","Centaurea stoebe",
+                                 "Chamaecrista fasciculata","Cirsium discolor",
+                                 "Dalea purpurea","Eutrochium maculatum",
+                                 "Eutrochium purpureum","Helianthus tuberosus",
+                                 "Impatiens capensis","Lobelia siphilitica",
+                                 "Lythrum salicaria","Monarda fistulosa",
+                                 "Nepeta cataria","Pycnanthemum virginianum",
+                                 "Securigera varia","Silphium perfoliatum",
+                                 "Solidago canadensis","Verbena hastata",
+                                 "Verbena stricta","Veronicastrum virginicum")
 
 
 
